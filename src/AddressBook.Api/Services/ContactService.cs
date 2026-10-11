@@ -5,7 +5,7 @@ using AddressBook.Api.Models;
 
 namespace AddressBook.Api.Services;
 
-public sealed class ContactService(IContactRepository repository) : IContactService
+public sealed class ContactService(IContactRepository repository, IUserRepository userRepository) : IContactService
 {
     public async Task<ContactResponseDto?> GetByIdAsync(Guid ownerId, Guid contactId, CancellationToken cancellationToken)
     {
@@ -132,6 +132,62 @@ public sealed class ContactService(IContactRepository repository) : IContactServ
             .Select(group => group.First())
             .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    public async Task<PagedResult<AdminContactResponseDto>> AdminListAsync(AdminContactQuery query, CancellationToken cancellationToken)
+    {
+        var all = await repository.GetAllAsync(cancellationToken);
+        IEnumerable<Contact> baseline = all;
+        if (query.OwnerId is { } ownerId)
+        {
+            baseline = baseline.Where(c => c.OwnerId == ownerId);
+        }
+
+        if (!query.IncludeDeleted)
+        {
+            baseline = baseline.Where(c => !c.IsDeleted);
+        }
+
+        var matching = ApplyFilters(baseline, query).ToList();
+        SortContacts(matching, query);
+
+        var totalCount = matching.Count;
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)query.PageSize);
+        var pageContacts = matching
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToList();
+
+        var items = new List<AdminContactResponseDto>(pageContacts.Count);
+        foreach (var contact in pageContacts)
+        {
+            var owner = await userRepository.GetByIdAsync(contact.OwnerId, cancellationToken);
+            items.Add(contact.ToAdminResponseDto(owner?.Username ?? "(unknown)"));
+        }
+
+        return new PagedResult<AdminContactResponseDto>
+        {
+            Items = items,
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+        };
+    }
+
+    public async Task<bool> RestoreAsync(Guid contactId, CancellationToken cancellationToken)
+    {
+        var current = await repository.GetByIdAsync(contactId, cancellationToken);
+        if (current is null)
+        {
+            return false;
+        }
+
+        var updated = await repository.UpdateAsync(
+            contactId,
+            c => c with { IsDeleted = false, UpdatedAt = DateTimeOffset.UtcNow },
+            cancellationToken);
+        return updated is not null;
     }
 
     /// <summary>Applies favorite/tag/search filters. Shared shape so the admin list (Phase 6) can reuse it.</summary>

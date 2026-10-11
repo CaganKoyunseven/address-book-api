@@ -20,6 +20,23 @@ public static class MappingExtensions
         UpdatedAt = contact.UpdatedAt,
     };
 
+    public static AdminContactResponseDto ToAdminResponseDto(this Contact contact, string ownerUsername) => new()
+    {
+        Id = contact.Id,
+        OwnerId = contact.OwnerId,
+        OwnerUsername = ownerUsername,
+        FirstName = contact.FirstName,
+        LastName = contact.LastName,
+        Email = contact.Email,
+        Phone = contact.Phone,
+        Address = contact.Address?.ToDto(),
+        Tags = contact.Tags,
+        IsFavorite = contact.IsFavorite,
+        IsDeleted = contact.IsDeleted,
+        CreatedAt = contact.CreatedAt,
+        UpdatedAt = contact.UpdatedAt,
+    };
+
     public static AddressDto ToDto(this Address address) => new()
     {
         Street = address.Street,

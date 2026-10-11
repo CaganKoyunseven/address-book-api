@@ -26,4 +26,10 @@ public interface IContactService
 
     /// <summary>Distinct tags used by the caller's own (non-deleted) contacts, sorted alphabetically.</summary>
     Task<IReadOnlyList<string>> GetTagsAsync(Guid ownerId, CancellationToken cancellationToken);
+
+    /// <summary>Admin-only: lists contacts across every owner, with the same filters plus owner/soft-delete.</summary>
+    Task<PagedResult<AdminContactResponseDto>> AdminListAsync(AdminContactQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Admin-only: un-deletes a contact regardless of its owner. Restoring an already-active contact also succeeds.</summary>
+    Task<bool> RestoreAsync(Guid contactId, CancellationToken cancellationToken);
 }

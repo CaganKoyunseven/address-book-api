@@ -7,7 +7,7 @@ namespace AddressBook.Tests.Unit;
 /// <summary>Covers search/filter/sort/paging and /tags behavior of ContactService.</summary>
 public class ContactQueryTests
 {
-    private readonly ContactService _service = new(new InMemoryContactRepository());
+    private readonly ContactService _service = new(new InMemoryContactRepository(), new InMemoryUserRepository());
     private readonly Guid _ownerId = Guid.NewGuid();
 
     private async Task<ContactResponseDto> SeedAsync(

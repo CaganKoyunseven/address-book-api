@@ -19,7 +19,7 @@ public class ContactServiceTests
     [Fact]
     public async Task CreateAsync_sets_owner_and_timestamps_and_trims_fields()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerId = Guid.NewGuid();
 
         var created = await service.CreateAsync(ownerId, NewCreateDto(), CancellationToken.None);
@@ -34,7 +34,7 @@ public class ContactServiceTests
     [Fact]
     public async Task CreateAsync_normalizes_tags_trim_dedupe_case_insensitive_preserve_order()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
 
         var created = await service.CreateAsync(Guid.NewGuid(), NewCreateDto(), CancellationToken.None);
 
@@ -44,7 +44,7 @@ public class ContactServiceTests
     [Fact]
     public async Task CreateAsync_blank_optional_fields_become_null()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var dto = new ContactCreateDto { FirstName = "A", LastName = "B", Email = "   ", Phone = null, Address = new AddressDto { Street = "  ", City = "  ", Country = "  " } };
 
         var created = await service.CreateAsync(Guid.NewGuid(), dto, CancellationToken.None);
@@ -57,7 +57,7 @@ public class ContactServiceTests
     [Fact]
     public async Task GetByIdAsync_returns_null_for_another_owners_contact()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerA = Guid.NewGuid();
         var ownerB = Guid.NewGuid();
         var created = await service.CreateAsync(ownerA, NewCreateDto(), CancellationToken.None);
@@ -70,7 +70,7 @@ public class ContactServiceTests
     [Fact]
     public async Task UpdateAsync_replaces_fields_keeps_id_and_bumps_updated_at()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerId = Guid.NewGuid();
         var created = await service.CreateAsync(ownerId, NewCreateDto(), CancellationToken.None);
         await Task.Delay(5);
@@ -90,7 +90,7 @@ public class ContactServiceTests
     [Fact]
     public async Task UpdateAsync_returns_null_for_another_owners_contact()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerA = Guid.NewGuid();
         var ownerB = Guid.NewGuid();
         var created = await service.CreateAsync(ownerA, NewCreateDto(), CancellationToken.None);
@@ -104,7 +104,7 @@ public class ContactServiceTests
     [Fact]
     public async Task DeleteAsync_soft_deletes_then_second_delete_fails_and_contact_is_hidden()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerId = Guid.NewGuid();
         var created = await service.CreateAsync(ownerId, NewCreateDto(), CancellationToken.None);
 
@@ -120,7 +120,7 @@ public class ContactServiceTests
     [Fact]
     public async Task DeleteAsync_returns_false_for_another_owners_contact()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerA = Guid.NewGuid();
         var ownerB = Guid.NewGuid();
         var created = await service.CreateAsync(ownerA, NewCreateDto(), CancellationToken.None);
@@ -133,7 +133,7 @@ public class ContactServiceTests
     [Fact]
     public async Task SetFavoriteAsync_marking_twice_stays_favorite_and_does_not_touch_updated_at_on_noop()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerId = Guid.NewGuid();
         var created = await service.CreateAsync(ownerId, NewCreateDto(), CancellationToken.None);
 
@@ -152,7 +152,7 @@ public class ContactServiceTests
     [Fact]
     public async Task SetFavoriteAsync_unmarking_twice_stays_not_favorite()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerId = Guid.NewGuid();
         var created = await service.CreateAsync(ownerId, NewCreateDto(), CancellationToken.None);
 
@@ -168,7 +168,7 @@ public class ContactServiceTests
     [Fact]
     public async Task SetFavoriteAsync_returns_false_for_another_owners_contact()
     {
-        var service = new ContactService(new InMemoryContactRepository());
+        var service = new ContactService(new InMemoryContactRepository(), new InMemoryUserRepository());
         var ownerA = Guid.NewGuid();
         var ownerB = Guid.NewGuid();
         var created = await service.CreateAsync(ownerA, NewCreateDto(), CancellationToken.None);
