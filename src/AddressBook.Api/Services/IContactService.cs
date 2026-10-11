@@ -1,0 +1,23 @@
+using AddressBook.Api.Dtos;
+
+namespace AddressBook.Api.Services;
+
+/// <summary>
+/// Business rules for contacts: ownership, normalization and soft-delete. Takes the caller's
+/// user id as a plain parameter (never reads HttpContext), so it stays easy to unit test.
+/// </summary>
+public interface IContactService
+{
+    Task<ContactResponseDto?> GetByIdAsync(Guid ownerId, Guid contactId, CancellationToken cancellationToken);
+
+    Task<ContactResponseDto> CreateAsync(Guid ownerId, ContactCreateDto dto, CancellationToken cancellationToken);
+
+    /// <summary>Full replacement of the editable fields. Returns null if the contact isn't visible to this owner.</summary>
+    Task<ContactResponseDto?> UpdateAsync(Guid ownerId, Guid contactId, ContactUpdateDto dto, CancellationToken cancellationToken);
+
+    /// <summary>Soft delete. Returns false if the contact isn't visible to this owner (including: already deleted).</summary>
+    Task<bool> DeleteAsync(Guid ownerId, Guid contactId, CancellationToken cancellationToken);
+
+    /// <summary>Idempotent: setting the same favorite state twice still succeeds and leaves UpdatedAt unchanged.</summary>
+    Task<bool> SetFavoriteAsync(Guid ownerId, Guid contactId, bool favorite, CancellationToken cancellationToken);
+}

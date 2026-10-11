@@ -51,6 +51,7 @@ builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection("Seed")
 
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IContactService, ContactService>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services.Configure<JwtOptions>(jwtSection);
