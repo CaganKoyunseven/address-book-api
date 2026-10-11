@@ -1,8 +1,13 @@
 using System.Text.Json.Serialization;
+using AddressBook.Api.Data;
 using AddressBook.Api.Extensions;
 using AddressBook.Api.Middleware;
+using AddressBook.Api.Models;
+using AddressBook.Api.Options;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +38,12 @@ builder.Services.AddHealthChecks();
 
 builder.Services.AddAddressBookSwagger();
 
+// Repositories hold the actual data, so they are singletons; everything else is scoped per request.
+builder.Services.AddSingleton<IContactRepository, InMemoryContactRepository>();
+builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection("Seed"));
+
 builder.Services.AddCors(options =>
 {
     // Public demo API, no cookies/credentials involved, so any origin is fine.
@@ -49,6 +60,18 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 var app = builder.Build();
+
+using (var seedScope = app.Services.CreateScope())
+{
+    var services = seedScope.ServiceProvider;
+    await SeedData.SeedAsync(
+        services.GetRequiredService<IUserRepository>(),
+        services.GetRequiredService<IContactRepository>(),
+        services.GetRequiredService<IPasswordHasher<User>>(),
+        services.GetRequiredService<IOptions<SeedOptions>>(),
+        services.GetRequiredService<ILogger<Program>>(),
+        CancellationToken.None);
+}
 
 app.UseForwardedHeaders();
 
