@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -78,6 +79,9 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
+builder.Services.Configure<RateLimitOptions>(builder.Configuration.GetSection("RateLimiting"));
+builder.Services.AddAddressBookRateLimiting();
+
 builder.Services.AddCors(options =>
 {
     // Public demo API, no cookies/credentials involved, so any origin is fine.
@@ -122,6 +126,7 @@ app.UseSwaggerUI(options =>
 app.UseCors();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -132,7 +137,7 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         context.Response.ContentType = "application/json";
         return context.Response.WriteAsync($"{{\"status\":\"{report.Status}\"}}");
     },
-}).AllowAnonymous();
+}).AllowAnonymous().DisableRateLimiting();
 
 app.Run();
 

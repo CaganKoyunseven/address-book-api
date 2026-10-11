@@ -1,11 +1,16 @@
 using AddressBook.Api.Dtos;
 using AddressBook.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AddressBook.Api.Controllers;
 
-/// <summary>Account registration and login. No [Authorize] here, so these two actions are reachable by anyone.</summary>
+/// <summary>
+/// Account registration and login. No [Authorize] here, so these two actions are reachable by
+/// anyone, but the "auth" rate limit policy (stricter than the global one) guards against brute force.
+/// </summary>
 [ApiController]
+[EnableRateLimiting("auth")]
 [Route(ApiRoutes.V1 + "/auth")]
 public sealed class AuthController(IAuthService authService, ITokenService tokenService) : ControllerBase
 {

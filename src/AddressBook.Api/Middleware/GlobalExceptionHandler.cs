@@ -23,8 +23,9 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
 
         httpContext.Response.StatusCode = problemDetails.Status.Value;
-        httpContext.Response.ContentType = "application/problem+json";
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        // WriteAsJsonAsync's parameterless overload always sets Content-Type to "application/json"
+        // itself, overwriting whatever was set before it, so the RFC 7807 type must be passed in here.
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, options: null, contentType: "application/problem+json", cancellationToken);
 
         return true;
     }
