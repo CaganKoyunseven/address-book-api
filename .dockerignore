@@ -1,0 +1,14 @@
+**/bin
+**/obj
+**/.vs
+.git
+docs
+CLAUDE.md
+CLAUDE.local.md
+.claude
+.claude-plugin
+.superpowers
+.mcp.json
+tests
+*.md
+.idea

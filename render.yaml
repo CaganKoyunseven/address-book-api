@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: address-book-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Jwt__Key
+        generateValue: true
+      - key: Seed__AdminPassword
+        value: Admin#12345
+      - key: Seed__DemoPassword
+        value: Demo#12345
