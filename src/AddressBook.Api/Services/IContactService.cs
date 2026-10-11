@@ -20,4 +20,10 @@ public interface IContactService
 
     /// <summary>Idempotent: setting the same favorite state twice still succeeds and leaves UpdatedAt unchanged.</summary>
     Task<bool> SetFavoriteAsync(Guid ownerId, Guid contactId, bool favorite, CancellationToken cancellationToken);
+
+    /// <summary>Searches, filters, sorts and pages the caller's own (non-deleted) contacts.</summary>
+    Task<PagedResult<ContactResponseDto>> ListAsync(Guid ownerId, ContactQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Distinct tags used by the caller's own (non-deleted) contacts, sorted alphabetically.</summary>
+    Task<IReadOnlyList<string>> GetTagsAsync(Guid ownerId, CancellationToken cancellationToken);
 }

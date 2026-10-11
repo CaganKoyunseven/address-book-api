@@ -92,6 +92,123 @@ public sealed class ContactService(IContactRepository repository) : IContactServ
         return updated is not null;
     }
 
+    public async Task<PagedResult<ContactResponseDto>> ListAsync(Guid ownerId, ContactQuery query, CancellationToken cancellationToken)
+    {
+        var all = await repository.GetAllAsync(cancellationToken);
+        var filtered = all.Where(c => c.OwnerId == ownerId && !c.IsDeleted);
+        var matching = ApplyFilters(filtered, query).ToList();
+
+        SortContacts(matching, query);
+
+        var totalCount = matching.Count;
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)query.PageSize);
+        var items = matching
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(c => c.ToResponseDto())
+            .ToList();
+
+        return new PagedResult<ContactResponseDto>
+        {
+            Items = items,
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+        };
+    }
+
+    public async Task<IReadOnlyList<string>> GetTagsAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        var all = await repository.GetAllAsync(cancellationToken);
+        return all
+            .Where(c => c.OwnerId == ownerId && !c.IsDeleted)
+            // Repository order comes from a ConcurrentDictionary and is not guaranteed, so
+            // "first spelling wins" needs its own deterministic order to pick from.
+            .OrderBy(c => c.CreatedAt)
+            .ThenBy(c => c.Id)
+            .SelectMany(c => c.Tags)
+            .GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Applies favorite/tag/search filters. Shared shape so the admin list (Phase 6) can reuse it.</summary>
+    internal static IEnumerable<Contact> ApplyFilters(IEnumerable<Contact> contacts, ContactQuery query)
+    {
+        var filtered = contacts;
+
+        if (query.Favorite is { } favorite)
+        {
+            filtered = filtered.Where(c => c.IsFavorite == favorite);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Tag))
+        {
+            filtered = filtered.Where(c => c.Tags.Any(t => string.Equals(t, query.Tag, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        var search = query.Search?.Trim();
+        if (!string.IsNullOrEmpty(search))
+        {
+            filtered = filtered.Where(c => MatchesSearch(c, search));
+        }
+
+        return filtered;
+    }
+
+    private static bool MatchesSearch(Contact contact, string search)
+    {
+        var fullName = $"{contact.FirstName} {contact.LastName}";
+        return Contains(contact.FirstName, search)
+            || Contains(contact.LastName, search)
+            || Contains(fullName, search)
+            || Contains(contact.Email, search)
+            || Contains(contact.Phone, search)
+            || Contains(contact.Address?.City, search)
+            || contact.Tags.Any(tag => Contains(tag, search));
+    }
+
+    private static bool Contains(string? value, string search) =>
+        value is not null && value.Contains(search, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Sorts in place: optional favorites-first, then the chosen field/direction, then Id as a deterministic tie-break.</summary>
+    internal static void SortContacts(List<Contact> contacts, ContactQuery query)
+    {
+        Comparison<Contact> byField = query.SortBy switch
+        {
+            ContactSortBy.Email => (a, b) => string.Compare(a.Email ?? string.Empty, b.Email ?? string.Empty, StringComparison.OrdinalIgnoreCase),
+            ContactSortBy.CreatedAt => (a, b) => a.CreatedAt.CompareTo(b.CreatedAt),
+            _ => (a, b) =>
+            {
+                var byLastName = string.Compare(a.LastName, b.LastName, StringComparison.OrdinalIgnoreCase);
+                return byLastName != 0 ? byLastName : string.Compare(a.FirstName, b.FirstName, StringComparison.OrdinalIgnoreCase);
+            },
+        };
+
+        if (query.SortDir == SortDirection.Desc)
+        {
+            var ascending = byField;
+            byField = (a, b) => ascending(b, a);
+        }
+
+        contacts.Sort((a, b) =>
+        {
+            if (query.FavoritesFirst)
+            {
+                var byFavorite = b.IsFavorite.CompareTo(a.IsFavorite); // favorites (true) always first
+                if (byFavorite != 0)
+                {
+                    return byFavorite;
+                }
+            }
+
+            var byFieldResult = byField(a, b);
+            return byFieldResult != 0 ? byFieldResult : a.Id.CompareTo(b.Id);
+        });
+    }
+
     private static bool IsVisibleToOwner(Contact? contact, Guid ownerId) =>
         contact is not null && contact.OwnerId == ownerId && !contact.IsDeleted;
 

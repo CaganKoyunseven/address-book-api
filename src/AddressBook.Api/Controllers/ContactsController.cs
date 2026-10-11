@@ -16,6 +16,17 @@ namespace AddressBook.Api.Controllers;
 [Route(ApiRoutes.V1 + "/contacts")]
 public sealed class ContactsController(IContactService contactService) : ControllerBase
 {
+    /// <summary>Lists the caller's own contacts, with search, filter, sort and paging.</summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<ContactResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> List([FromQuery] ContactQuery query, CancellationToken cancellationToken)
+    {
+        var result = await contactService.ListAsync(User.GetUserId(), query, cancellationToken);
+        return Ok(result);
+    }
+
     /// <summary>Gets one of the caller's own contacts.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ContactResponseDto), StatusCodes.Status200OK)]
