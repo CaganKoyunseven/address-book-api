@@ -1,0 +1,32 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+*.pdb
+
+## Build results
+[Dd]ebug/
+[Dd]ebug[Aa]ny[Cc][Pp][Uu]/
+[Rr]elease/
+[Rr]elease[Aa]ny[Cc][Pp][Uu]/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
+## Rider / JetBrains
+.idea/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Local project notes (never committed, see CLAUDE.md)
+docs/

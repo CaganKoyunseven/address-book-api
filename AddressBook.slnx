@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AddressBook.Api/AddressBook.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AddressBook.Tests/AddressBook.Tests.csproj" />
+  </Folder>
+</Solution>
