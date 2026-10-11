@@ -1,13 +1,18 @@
+using System.Text;
 using System.Text.Json.Serialization;
 using AddressBook.Api.Data;
 using AddressBook.Api.Extensions;
 using AddressBook.Api.Middleware;
 using AddressBook.Api.Models;
 using AddressBook.Api.Options;
+using AddressBook.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +48,34 @@ builder.Services.AddSingleton<IContactRepository, InMemoryContactRepository>();
 builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection("Seed"));
+
+builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+var jwtSection = builder.Configuration.GetSection("Jwt");
+builder.Services.Configure<JwtOptions>(jwtSection);
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        // Values are read lazily (inside this callback) rather than eagerly, so test hosts
+        // that override configuration before the first request still take effect.
+        options.MapInboundClaims = false; // keep short claim names: sub/name/role
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtSection["Issuer"],
+            ValidateAudience = true,
+            ValidAudience = jwtSection["Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(RequireJwtKey(jwtSection))),
+            NameClaimType = "name",
+            RoleClaimType = "role",
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
@@ -87,6 +120,7 @@ app.UseSwaggerUI(options =>
 
 app.UseCors();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -102,4 +136,19 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 app.Run();
 
 /// <summary>Exposed so WebApplicationFactory&lt;Program&gt; can host the app in integration tests.</summary>
-public partial class Program;
+public partial class Program
+{
+    /// <summary>Fails fast at startup if the signing key is missing or too weak to be HS256-safe.</summary>
+    private static string RequireJwtKey(IConfigurationSection jwtSection)
+    {
+        var key = jwtSection["Key"];
+        if (string.IsNullOrWhiteSpace(key) || key.Length < 32)
+        {
+            throw new InvalidOperationException(
+                "Configuration 'Jwt:Key' is missing or shorter than 32 characters. " +
+                "Set it in appsettings (Development only) or via the Jwt__Key environment variable.");
+        }
+
+        return key;
+    }
+}

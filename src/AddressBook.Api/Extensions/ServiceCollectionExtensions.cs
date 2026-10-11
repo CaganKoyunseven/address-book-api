@@ -26,6 +26,14 @@ public static class ServiceCollectionExtensions
             {
                 options.IncludeXmlComments(xmlPath);
             }
+
+            // Infers the "Bearer" scheme from the JWT bearer authentication handler registered
+            // in Program.cs, so the Swagger UI "Authorize" button appears automatically.
+            options.InferSecuritySchemes();
+            options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("Bearer", document)] = [],
+            });
         });
 
         return services;
